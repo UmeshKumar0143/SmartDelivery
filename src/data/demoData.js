@@ -1,0 +1,87 @@
+// Demo data for a fictitious New York City area
+export const graphData = {
+  nodes: [
+    { id: 'n1', name: 'Central Park', latitude: 40.7812, longitude: -73.9665 },
+    { id: 'n2', name: 'Times Square', latitude: 40.7580, longitude: -73.9855 },
+    { id: 'n3', name: 'Empire State Building', latitude: 40.7484, longitude: -73.9857 },
+    { id: 'n4', name: 'Rockefeller Center', latitude: 40.7587, longitude: -73.9787 },
+    { id: 'n5', name: 'Grand Central Terminal', latitude: 40.7527, longitude: -73.9772 },
+    { id: 'n6', name: 'Brooklyn Bridge', latitude: 40.7061, longitude: -73.9969 },
+    { id: 'n7', name: 'Statue of Liberty', latitude: 40.6892, longitude: -74.0445 },
+    { id: 'n8', name: 'Columbia University', latitude: 40.8075, longitude: -73.9626 },
+    { id: 'n9', name: 'Wall Street', latitude: 40.7068, longitude: -74.0090 },
+    { id: 'n10', name: 'Battery Park', latitude: 40.7032, longitude: -74.0167 },
+  ],
+  edges: [
+    { id: 'e1', source: 'n1', target: 'n2', weight: 2.5, isBlocked: false },
+    { id: 'e2', source: 'n1', target: 'n4', weight: 1.8, isBlocked: false },
+    { id: 'e3', source: 'n1', target: 'n8', weight: 3.5, isBlocked: false },
+    { id: 'e4', source: 'n2', target: 'n3', weight: 2.1, isBlocked: false },
+    { id: 'e5', source: 'n2', target: 'n4', weight: 1.2, isBlocked: false },
+    { id: 'e6', source: 'n3', target: 'n5', weight: 1.5, isBlocked: false },
+    { id: 'e7', source: 'n4', target: 'n5', weight: 0.9, isBlocked: false },
+    { id: 'e8', source: 'n5', target: 'n9', weight: 4.7, isBlocked: false },
+    { id: 'e9', source: 'n6', target: 'n9', weight: 1.8, isBlocked: false },
+    { id: 'e10', source: 'n6', target: 'n10', weight: 1.9, isBlocked: false },
+    { id: 'e11', source: 'n7', target: 'n10', weight: 5.3, isBlocked: false },
+    { id: 'e12', source: 'n8', target: 'n1', weight: 3.5, isBlocked: false },
+    { id: 'e13', source: 'n9', target: 'n10', weight: 1.2, isBlocked: false },
+    { id: 'e14', source: 'n3', target: 'n9', weight: 5.1, isBlocked: false },
+    { id: 'e15', source: 'n2', target: 'n5', weight: 1.7, isBlocked: false },
+    { id: 'e16', source: 'n4', target: 'n3', weight: 1.3, isBlocked: false },
+    { id: 'e17', source: 'n7', target: 'n9', weight: 4.2, isBlocked: false },
+    { id: 'e18', source: 'n8', target: 'n4', weight: 4.8, isBlocked: false },
+    { id: 'e19', source: 'n5', target: 'n6', weight: 5.4, isBlocked: false },
+    { id: 'e20', source: 'n3', target: 'n6', weight: 5.2, isBlocked: false },
+  ],
+};
+
+// Demo users data
+export const usersData = [
+  { id: 'u1', name: 'Admin User', role: 'admin', addressId: 'n1' },
+  { id: 'u2', name: 'John Doe', role: 'user', addressId: 'n3' },
+  { id: 'u3', name: 'Jane Smith', role: 'user', addressId: 'n5' },
+  { id: 'u4', name: 'Robert Johnson', role: 'user', addressId: 'n8' },
+  { id: 'u5', name: 'Delivery Guy 1', role: 'delivery', addressId: 'n2' },
+  { id: 'u6', name: 'Delivery Guy 2', role: 'delivery', addressId: 'n4' },
+];
+
+// Demo orders data
+export const ordersData = [
+  {
+    id: 'o1',
+    userId: 'u2',
+    deliveryGuyId: 'u5',
+    sourceAddressId: 'n2', // Delivery guy's location
+    targetAddressId: 'n3', // User's address
+    status: 'assigned',
+    createdAt: new Date(Date.now() - 3600000), // 1 hour ago
+    path: ['n2', 'n3'],
+    distance: 2.1,
+    estimatedDeliveryTime: 13, // Assuming 10 km/h speed => 2.1 km at 10 km/h = ~13 minutes
+  },
+  {
+    id: 'o2',
+    userId: 'u3',
+    deliveryGuyId: 'u6',
+    sourceAddressId: 'n4', // Delivery guy's location
+    targetAddressId: 'n5', // User's address
+    status: 'in-progress',
+    createdAt: new Date(Date.now() - 1800000), // 30 minutes ago
+    path: ['n4', 'n5'],
+    distance: 0.9,
+    estimatedDeliveryTime: 5, // 0.9 km at 10 km/h = ~5 minutes
+  },
+  {
+    id: 'o3',
+    userId: 'u4',
+    deliveryGuyId: 'u5',
+    sourceAddressId: 'n2', // Delivery guy's location
+    targetAddressId: 'n8', // User's address
+    status: 'placed',
+    createdAt: new Date(),
+    path: ['n2', 'n4', 'n1', 'n8'],
+    distance: 9.5,
+    estimatedDeliveryTime: 57, // 9.5 km at 10 km/h = ~57 minutes
+  },
+];
