@@ -5,30 +5,26 @@ import { Truck, Clock, Package, MapPin, Navigation } from 'lucide-react';
 
 const DeliveryDashboard = () => {
   const { state, dispatch } = useAppContext();
-  const { currentUser, orders, graph } = state;
+  const { currentUser, orders, graph, users } = state;
   const [deliveryOrders, setDeliveryOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Filter orders for the current delivery guy
   useEffect(() => {
     if (currentUser) {
-      const filteredOrders = orders.filter(order => 
-        order.deliveryGuyId === currentUser.id && 
-        order.status !== 'delivered'
+      const filteredOrders = orders.filter(
+        (order) => order.deliveryGuyId === currentUser.id && order.status !== 'delivered'
       );
       setDeliveryOrders(filteredOrders);
-      
-      // Select the first order if we have any
+
       if (filteredOrders.length > 0 && !selectedOrder) {
         setSelectedOrder(filteredOrders[0]);
       }
     }
   }, [currentUser, orders, selectedOrder]);
-
-  // Function to update order status
   const handleUpdateStatus = (order) => {
+
     let nextStatus;
-    
+
     switch (order.status) {
       case 'placed':
         nextStatus = 'assigned';
@@ -42,14 +38,17 @@ const DeliveryDashboard = () => {
       default:
         return;
     }
-    
+
     dispatch({
       type: 'UPDATE_ORDER_STATUS',
       payload: { orderId: order.id, status: nextStatus },
     });
+
+    if (selectedOrder?.id === order.id) {
+      setSelectedOrder({ ...order, status: nextStatus });
+    }
   };
 
-  // Get next action text
   const getNextActionText = (status) => {
     switch (status) {
       case 'placed':
@@ -63,10 +62,14 @@ const DeliveryDashboard = () => {
     }
   };
 
-  // Get node name by ID
   const getNodeName = (nodeId) => {
-    const node = graph.nodes.find(n => n.id === nodeId);
+    const node = graph.nodes.find((n) => n.id === nodeId);
     return node?.name || 'Unknown';
+  };
+
+  const getUserName = (userId) => {
+    const user = users.find((u) => u.id === userId);
+    return user?.name || 'Unknown User';
   };
 
   if (!currentUser) return null;
@@ -75,9 +78,7 @@ const DeliveryDashboard = () => {
     <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Delivery Dashboard</h1>
-        <p className="text-gray-600">
-          Manage and track your assigned deliveries.
-        </p>
+        <p className="text-gray-600">Manage and track your assigned deliveries.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 h-full">
@@ -91,7 +92,7 @@ const DeliveryDashboard = () => {
             </div>
 
             <div className="space-y-3">
-              {deliveryOrders.map(order => (
+              {deliveryOrders.map((order) => (
                 <div
                   key={order.id}
                   className={`p-4 rounded-lg border cursor-pointer transition-colors ${
@@ -106,16 +107,28 @@ const DeliveryDashboard = () => {
                       <Package className="w-4 h-4 text-blue-500 mr-2" />
                       <span className="font-medium">Order {order.id}</span>
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      order.status === 'placed' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'assigned' ? 'bg-amber-100 text-amber-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        order.status === 'placed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : order.status === 'assigned'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
                       {order.status}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2 text-sm">
+                    <div className="flex items-start">
+                      <Package className="w-4 h-4 text-gray-400 mr-2 mt-0.5" />
+                      <div>
+                        <p className="text-gray-500">Ordered by:</p>
+                        <p className="font-medium">{getUserName(order.userId)}</p>
+                      </div>
+                    </div>
+
                     <div className="flex items-start">
                       <Truck className="w-4 h-4 text-gray-400 mr-2 mt-0.5" />
                       <div>
@@ -123,7 +136,7 @@ const DeliveryDashboard = () => {
                         <p className="font-medium">{getNodeName(order.sourceAddressId)}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start">
                       <MapPin className="w-4 h-4 text-gray-400 mr-2 mt-0.5" />
                       <div>
@@ -131,7 +144,7 @@ const DeliveryDashboard = () => {
                         <p className="font-medium">{getNodeName(order.targetAddressId)}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>{order.distance} km</span>
                       <span>{order.estimatedDeliveryTime} min</span>
@@ -168,4 +181,4 @@ const DeliveryDashboard = () => {
   );
 };
 
-export default DeliveryDashboard; 
+export default DeliveryDashboard;

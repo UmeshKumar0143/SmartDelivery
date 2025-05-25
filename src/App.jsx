@@ -11,12 +11,10 @@ const AppContent = () => {
   const { state } = useAppContext();
   const { currentUser } = state;
 
-  // Show login screen if no user is logged in
   if (!currentUser) {
     return <Login />;
   }
 
-  // Render dashboard based on user role
   const renderDashboard = () => {
     switch (currentUser.role) {
       case 'admin':

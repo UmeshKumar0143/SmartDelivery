@@ -10,20 +10,16 @@ const OrdersTable = ({
 }) => {
   const { state, dispatch } = useAppContext();
   const { graph, users } = state;
-
-  // Get node name by ID
   const getNodeName = (nodeId) => {
     const node = graph.nodes.find(n => n.id === nodeId);
     return node?.name || 'Unknown';
   };
 
-  // Get user name by ID
   const getUserName = (userId) => {
     const user = users.find(u => u.id === userId);
     return user?.name || 'Unknown';
   };
 
-  // Format timestamp
   const formatTime = (date) => {
     return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
@@ -31,16 +27,8 @@ const OrdersTable = ({
       hour12: true,
     }).format(new Date(date));
   };
+ 
 
-  // Handle order status update
-  const handleUpdateStatus = (orderId, newStatus) => {
-    dispatch({
-      type: 'UPDATE_ORDER_STATUS',
-      payload: { orderId, status: newStatus },
-    });
-  };
-
-  // Get status class
   const getStatusClass = (status) => {
     switch (status) {
       case 'placed':
@@ -56,19 +44,7 @@ const OrdersTable = ({
     }
   };
 
-  // Get next status options
-  const getNextStatus = (status) => {
-    switch (status) {
-      case 'placed':
-        return { value: 'assigned', label: 'Assign Order' };
-      case 'assigned':
-        return { value: 'in-progress', label: 'Start Delivery' };
-      case 'in-progress':
-        return { value: 'delivered', label: 'Mark Delivered' };
-      default:
-        return null;
-    }
-  };
+
 
   return (
     <div className="overflow-x-auto">

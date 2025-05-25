@@ -6,7 +6,6 @@ const Login = () => {
   const { state, dispatch } = useAppContext();
   const [selectedRole, setSelectedRole] = useState('user');
 
-  // Filter users by the selected role
   const filteredUsers = state.users.filter((user) => user.role === selectedRole);
 
   const handleLogin = (userId) => {

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useReducer } from 'react';
 import { graphData, usersData, ordersData } from '../data/demoData';
 import { findShortestPath } from '../utils/dijkstra';
 
-// Initial state
 const initialState = {
   users: usersData,
   graph: graphData,
@@ -10,13 +9,11 @@ const initialState = {
   currentUser: null,
 };
 
-// Create the context
 const AppContext = createContext({
   state: initialState,
   dispatch: () => null,
 });
 
-// Reducer function
 const appReducer = (state, action) => {
   switch (action.type) {
     case 'LOGIN':
@@ -43,14 +40,12 @@ const appReducer = (state, action) => {
 
       const sourceAddressId = deliveryGuy.addressId;
       
-      // Find shortest path using Dijkstra's algorithm
       const { path, distance, estimatedTime } = findShortestPath(
         state.graph,
         sourceAddressId,
         targetAddressId
       );
 
-      // Create a new order
       const newOrder = {
         id: `o${state.orders.length + 1}`,
         userId,
@@ -89,7 +84,6 @@ const appReducer = (state, action) => {
     case 'TOGGLE_OBSTACLE': {
       const { edgeId } = action.payload;
       
-      // Update the edge's blocked status
       const updatedEdges = state.graph.edges.map((edge) => {
         if (edge.id === edgeId) {
           return { ...edge, isBlocked: !edge.isBlocked };
@@ -102,7 +96,6 @@ const appReducer = (state, action) => {
         edges: updatedEdges,
       };
 
-      // Recalculate paths for all orders
       const recalculatedOrders = state.orders.map((order) => {
         if (order.status !== 'delivered') {
           const { path, distance, estimatedTime } = findShortestPath(
@@ -141,7 +134,6 @@ const appReducer = (state, action) => {
   }
 };
 
-// Provider component
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -152,5 +144,4 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the context
 export const useAppContext = () => useContext(AppContext);

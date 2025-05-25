@@ -1,8 +1,4 @@
-// dijkstra.js - Pathfinding algorithms with routing support
 
-/**
- * Find shortest path using Dijkstra's algorithm with optional routing geometry
- */
 export const findShortestPath = (graph, startNodeId, endNodeId) => {
   if (!graph.nodes.find((n) => n.id === startNodeId) || !graph.nodes.find((n) => n.id === endNodeId)) {
     return { path: [], distance: 0, estimatedTime: 0 };
@@ -74,18 +70,14 @@ export const findShortestPath = (graph, startNodeId, endNodeId) => {
   };
 };
 
-/**
- * Enhanced pathfinding that includes actual route geometry from routing services
- */
+
 export const findShortestPathWithRouting = async (graph, startNodeId, endNodeId) => {
-  // First, get the logical shortest path
   const pathResult = findShortestPath(graph, startNodeId, endNodeId);
   
   if (pathResult.path.length === 0) {
     return { ...pathResult, routeGeometry: [] };
   }
 
-  // Then get the actual route geometry
   const routeGeometry = await getRouteGeometry(graph, pathResult.path);
   
   return {
@@ -94,9 +86,7 @@ export const findShortestPathWithRouting = async (graph, startNodeId, endNodeId)
   };
 };
 
-/**
- * Get actual route geometry using OSRM routing service (free, no API key required)
- */
+
 export const getRouteGeometry = async (graph, path) => {
   if (path.length < 2) return [];
 
@@ -105,12 +95,10 @@ export const getRouteGeometry = async (graph, path) => {
       graph.nodes.find(n => n.id === nodeId)
     ).filter(Boolean);
 
-    // Create waypoints for OSRM
     const waypoints = pathNodes.map(node => 
       `${node.longitude},${node.latitude}`
     ).join(';');
 
-    // Using free OSRM service
     const response = await fetch(
       `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`
     );
@@ -118,7 +106,6 @@ export const getRouteGeometry = async (graph, path) => {
     if (response.ok) {
       const data = await response.json();
       if (data.routes && data.routes[0] && data.routes[0].geometry) {
-        // Convert coordinates to [lat, lng] format for Leaflet
         return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
       }
     }
@@ -126,16 +113,12 @@ export const getRouteGeometry = async (graph, path) => {
     console.warn('Failed to get route geometry from OSRM, falling back to straight lines:', error);
   }
 
-  // Fallback to straight lines between nodes if routing service fails
   return path.map(nodeId => {
     const node = graph.nodes.find(n => n.id === nodeId);
     return node ? [node.latitude, node.longitude] : null;
   }).filter(Boolean);
 };
 
-/**
- * Alternative routing using OpenRouteService (requires API key)
- */
 export const getRouteGeometryORS = async (graph, path, apiKey) => {
   if (path.length < 2) return [];
 
@@ -156,7 +139,6 @@ export const getRouteGeometryORS = async (graph, path, apiKey) => {
     if (response.ok) {
       const data = await response.json();
       if (data.features && data.features[0] && data.features[0].geometry) {
-        // Convert coordinates to [lat, lng] format for Leaflet
         return data.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
       }
     }
@@ -164,16 +146,13 @@ export const getRouteGeometryORS = async (graph, path, apiKey) => {
     console.warn('Failed to get route geometry from OpenRouteService, falling back to straight lines:', error);
   }
 
-  // Fallback to straight lines
   return path.map(nodeId => {
     const node = graph.nodes.find(n => n.id === nodeId);
     return node ? [node.latitude, node.longitude] : null;
   }).filter(Boolean);
 };
 
-/**
- * Create adjacency list from graph structure
- */
+
 const createAdjacencyList = (graph) => {
   const adjacencyList = {};
 
@@ -198,12 +177,8 @@ const createAdjacencyList = (graph) => {
   return adjacencyList;
 };
 
-/**
- * Calculate the straight-line distance (as the crow flies) between two nodes
- * using the Haversine formula for distances on Earth's surface
- */
 export const calculateDistance = (node1, node2) => {
-  const R = 6371; // Earth's radius in km
+  const R = 6371; 
   
   const lat1 = node1.latitude * Math.PI / 180;
   const lat2 = node2.latitude * Math.PI / 180;

@@ -15,26 +15,19 @@ const Dashboard = ({ children }) => {
     dispatch({ type: 'LOGOUT' });
   };
 
-  // Navigation options based on user role
   const getNavOptions = (role) => {
     switch (role) {
       case 'admin':
         return [
           { name: 'Dashboard', icon: <Map className="w-5 h-5" />, id: 'dashboard' },
-          { name: 'Orders', icon: <Package className="w-5 h-5" />, id: 'orders' },
-          { name: 'Obstacles', icon: <AlertTriangle className="w-5 h-5" />, id: 'obstacles' },
-          { name: 'Settings', icon: <Settings className="w-5 h-5" />, id: 'settings' },
         ];
       case 'user':
         return [
           { name: 'Dashboard', icon: <Map className="w-5 h-5" />, id: 'dashboard' },
-          { name: 'My Orders', icon: <Package className="w-5 h-5" />, id: 'orders' },
-          { name: 'Place Order', icon: <Truck className="w-5 h-5" />, id: 'place-order' },
         ];
       case 'delivery':
         return [
           { name: 'Dashboard', icon: <Map className="w-5 h-5" />, id: 'dashboard' },
-          { name: 'My Deliveries', icon: <Truck className="w-5 h-5" />, id: 'deliveries' },
         ];
       default:
         return [];
@@ -46,7 +39,6 @@ const Dashboard = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <div 
         className={`bg-white shadow-lg transition-all duration-300 ${
           sidebarOpen ? 'w-64' : 'w-20'
@@ -110,7 +102,6 @@ const Dashboard = ({ children }) => {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 overflow-auto">
         <div className="p-6 h-full">
           {children}

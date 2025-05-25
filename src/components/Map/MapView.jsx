@@ -27,14 +27,8 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
   const [allRoutes, setAllRoutes] = useState([]);
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
 
-  // Create custom icons for different user roles
   const userIcon = L.divIcon({
     className: 'bg-blue-500 rounded-full w-4 h-4 -ml-2 -mt-2',
-    iconSize: [16, 16],
-  });
-
-  const adminIcon = L.divIcon({
-    className: 'bg-purple-500 rounded-full w-4 h-4 -ml-2 -mt-2',
     iconSize: [16, 16],
   });
 
@@ -43,19 +37,10 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
     iconSize: [16, 16],
   });
 
-  // Get icon based on user role
   const getUserIcon = (user) => {
-    switch (user.role) {
-      case 'admin':
-        return adminIcon;
-      case 'delivery':
-        return deliveryIcon;
-      default:
-        return userIcon;
-    }
+    return user?.role === 'delivery' ? deliveryIcon : userIcon;
   };
 
-  // Load routes for all delivery orders
   useEffect(() => {
     const loadAllRoutes = async () => {
       if (!highlightUser) return;
@@ -90,7 +75,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
 
         setAllRoutes(routes.filter((route) => route !== null));
 
-        // Update map center to delivery guy's location if no order is selected
         if (!selectedOrder && highlightUser) {
           const userNode = graph.nodes.find((n) => n.id === highlightUser.addressId);
           if (userNode) {
@@ -107,7 +91,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
     loadAllRoutes();
   }, [orders, graph, highlightUser, selectedOrder]);
 
-  // Update map center when selectedOrder changes
   useEffect(() => {
     if (selectedOrder) {
       const targetNode = graph.nodes.find((n) => n.id === selectedOrder.targetAddressId);
@@ -117,41 +100,48 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
     }
   }, [selectedOrder, graph.nodes]);
 
-  // Render graph nodes as markers (only for users with orders or delivery guys)
   const renderNodes = () => {
-    // Get user IDs who have placed orders
-    const userIdsWithOrders = new Set(orders.map((order) => order.userId));
+    const deliveryNodeIds = new Set(orders.map((order) => order.targetAddressId));
 
-    // Filter users to include only those with orders or delivery guys
-    const relevantUsers = users.filter(
-      (user) => userIdsWithOrders.has(user.id) || user.role === 'delivery'
-    );
-
-    // Get nodes associated with these users
-    const relevantNodeIds = new Set(relevantUsers.map((user) => user.addressId));
+    if (highlightUser?.role === 'delivery') {
+      deliveryNodeIds.add(highlightUser.addressId);
+    }
 
     return graph.nodes
-      .filter((node) => relevantNodeIds.has(node.id))
+      .filter((node) => deliveryNodeIds.has(node.id))
       .map((node) => {
-        const usersAtNode = relevantUsers.filter((u) => u.addressId === node.id);
+        const ordersAtNode = orders.filter((order) => order.targetAddressId === node.id);
+        const usersAtNode = ordersAtNode
+          .map((order) => users.find((u) => u.id === order.userId))
+          .filter((user) => user);
 
         return (
           <Marker
             key={node.id}
             position={[node.latitude, node.longitude]}
-            icon={usersAtNode.length > 0 ? getUserIcon(usersAtNode[0]) : userIcon}
+            icon={
+              node.id === highlightUser?.addressId
+                ? getUserIcon(highlightUser)
+                : usersAtNode.length > 0
+                ? getUserIcon(usersAtNode[0])
+                : userIcon
+            }
           >
             <Popup>
               <div>
                 <h3 className="font-semibold">{node.name}</h3>
+                {node.id === highlightUser?.addressId && highlightUser && (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium">Delivery Guy:</p>
+                    <p className="text-sm">{highlightUser.name}</p>
+                  </div>
+                )}
                 {usersAtNode.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-sm font-medium">Users at this location:</p>
+                    <p className="text-sm font-medium">Ordered by:</p>
                     <ul className="list-disc list-inside text-sm">
                       {usersAtNode.map((user) => (
-                        <li key={user.id}>
-                          {user.name} ({user.role})
-                        </li>
+                        <li key={user.id}>{user.name}</li>
                       ))}
                     </ul>
                   </div>
@@ -163,7 +153,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
       });
   };
 
-  // Render graph edges as polylines
   const renderEdges = () => {
     if (!showEdges) return null;
 
@@ -196,7 +185,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
     });
   };
 
-  // Render delivery routes
   const renderPaths = () => {
     const inProgressOrder = allRoutes.find((route) => route.status === 'in-progress');
 
