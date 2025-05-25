@@ -1,21 +1,14 @@
+// dijkstra.js - Pathfinding algorithms with routing support
+
 /**
- * Implementation of Dijkstra's algorithm to find the shortest path between two nodes
- * 
- * @param {Object} graph - The graph containing nodes and edges
- * @param {string} startNodeId - The ID of the starting node
- * @param {string} endNodeId - The ID of the ending node
- * @returns {Object} An object containing the path as an array of node IDs, the total distance, and estimated time
+ * Find shortest path using Dijkstra's algorithm with optional routing geometry
  */
 export const findShortestPath = (graph, startNodeId, endNodeId) => {
-  // Check if both nodes exist in the graph
   if (!graph.nodes.find((n) => n.id === startNodeId) || !graph.nodes.find((n) => n.id === endNodeId)) {
     return { path: [], distance: 0, estimatedTime: 0 };
   }
 
-  // Create adjacency list from graph
   const adjacencyList = createAdjacencyList(graph);
-
-  // Set initial distances to Infinity for all nodes except start node
   const distances = {};
   const previous = {};
   const unvisited = new Set();
@@ -26,9 +19,7 @@ export const findShortestPath = (graph, startNodeId, endNodeId) => {
     unvisited.add(node.id);
   });
 
-  // Process nodes until all are visited or we find the end node
   while (unvisited.size > 0) {
-    // Find the node with the smallest distance
     let currentNode = null;
     let smallestDistance = Infinity;
 
@@ -39,22 +30,17 @@ export const findShortestPath = (graph, startNodeId, endNodeId) => {
       }
     }
 
-    // If we can't find a node or reached the destination, we're done
     if (currentNode === null || currentNode === endNodeId || smallestDistance === Infinity) {
       break;
     }
 
-    // Remove the current node from unvisited
     unvisited.delete(currentNode);
 
-    // Check all neighbors of the current node
     const neighbors = adjacencyList[currentNode] || [];
     for (const { node: neighborId, weight } of neighbors) {
-      // Only consider unvisited neighbors
       if (unvisited.has(neighborId)) {
         const tentativeDistance = distances[currentNode] + weight;
         
-        // If we found a shorter path to the neighbor
         if (tentativeDistance < distances[neighborId]) {
           distances[neighborId] = tentativeDistance;
           previous[neighborId] = currentNode;
@@ -63,28 +49,22 @@ export const findShortestPath = (graph, startNodeId, endNodeId) => {
     }
   }
 
-  // Reconstruct the path from end to start
   const path = [];
   let current = endNodeId;
 
-  // If we couldn't reach the end node, return empty path
   if (previous[endNodeId] === null && startNodeId !== endNodeId) {
     return { path: [], distance: 0, estimatedTime: 0 };
   }
 
-  // Add end node to path
   path.push(current);
 
-  // Trace back the path
   while (current !== startNodeId) {
     if (previous[current] === null) break;
     current = previous[current];
     path.unshift(current);
   }
 
-  // Calculate total distance and estimated time
   const distance = distances[endNodeId];
-  // Assume speed of 10 km/h => Convert to minutes
   const estimatedTime = distance !== Infinity ? Math.round((distance / 10) * 60) : 0;
 
   return {
@@ -95,22 +75,115 @@ export const findShortestPath = (graph, startNodeId, endNodeId) => {
 };
 
 /**
- * Creates an adjacency list from the graph
+ * Enhanced pathfinding that includes actual route geometry from routing services
+ */
+export const findShortestPathWithRouting = async (graph, startNodeId, endNodeId) => {
+  // First, get the logical shortest path
+  const pathResult = findShortestPath(graph, startNodeId, endNodeId);
+  
+  if (pathResult.path.length === 0) {
+    return { ...pathResult, routeGeometry: [] };
+  }
+
+  // Then get the actual route geometry
+  const routeGeometry = await getRouteGeometry(graph, pathResult.path);
+  
+  return {
+    ...pathResult,
+    routeGeometry,
+  };
+};
+
+/**
+ * Get actual route geometry using OSRM routing service (free, no API key required)
+ */
+export const getRouteGeometry = async (graph, path) => {
+  if (path.length < 2) return [];
+
+  try {
+    const pathNodes = path.map(nodeId => 
+      graph.nodes.find(n => n.id === nodeId)
+    ).filter(Boolean);
+
+    // Create waypoints for OSRM
+    const waypoints = pathNodes.map(node => 
+      `${node.longitude},${node.latitude}`
+    ).join(';');
+
+    // Using free OSRM service
+    const response = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.routes && data.routes[0] && data.routes[0].geometry) {
+        // Convert coordinates to [lat, lng] format for Leaflet
+        return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to get route geometry from OSRM, falling back to straight lines:', error);
+  }
+
+  // Fallback to straight lines between nodes if routing service fails
+  return path.map(nodeId => {
+    const node = graph.nodes.find(n => n.id === nodeId);
+    return node ? [node.latitude, node.longitude] : null;
+  }).filter(Boolean);
+};
+
+/**
+ * Alternative routing using OpenRouteService (requires API key)
+ */
+export const getRouteGeometryORS = async (graph, path, apiKey) => {
+  if (path.length < 2) return [];
+
+  try {
+    const pathNodes = path.map(nodeId => 
+      graph.nodes.find(n => n.id === nodeId)
+    ).filter(Boolean);
+
+    if (pathNodes.length < 2) return [];
+
+    const startNode = pathNodes[0];
+    const endNode = pathNodes[pathNodes.length - 1];
+
+    const response = await fetch(
+      `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${startNode.longitude},${startNode.latitude}&end=${endNode.longitude},${endNode.latitude}`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.features && data.features[0] && data.features[0].geometry) {
+        // Convert coordinates to [lat, lng] format for Leaflet
+        return data.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to get route geometry from OpenRouteService, falling back to straight lines:', error);
+  }
+
+  // Fallback to straight lines
+  return path.map(nodeId => {
+    const node = graph.nodes.find(n => n.id === nodeId);
+    return node ? [node.latitude, node.longitude] : null;
+  }).filter(Boolean);
+};
+
+/**
+ * Create adjacency list from graph structure
  */
 const createAdjacencyList = (graph) => {
   const adjacencyList = {};
 
-  // Initialize empty adjacency list for all nodes
   graph.nodes.forEach((node) => {
     adjacencyList[node.id] = [];
   });
 
-  // Add edges to adjacency list (graph is undirected)
   graph.edges.forEach((edge) => {
-    // Skip blocked edges
     if (edge.isBlocked) return;
 
-    // Add in both directions since the graph is undirected
     adjacencyList[edge.source].push({
       node: edge.target,
       weight: edge.weight,

@@ -1,4 +1,3 @@
-// Demo data for a fictitious New York City area
 export const graphData = {
   nodes: [
     { id: 'n1', name: 'Central Park', latitude: 40.7812, longitude: -73.9665 },
@@ -36,7 +35,6 @@ export const graphData = {
   ],
 };
 
-// Demo users data
 export const usersData = [
   { id: 'u1', name: 'Admin User', role: 'admin', addressId: 'n1' },
   { id: 'u2', name: 'John Doe', role: 'user', addressId: 'n3' },
@@ -46,42 +44,40 @@ export const usersData = [
   { id: 'u6', name: 'Delivery Guy 2', role: 'delivery', addressId: 'n4' },
 ];
 
-// Demo orders data
 export const ordersData = [
   {
     id: 'o1',
     userId: 'u2',
     deliveryGuyId: 'u5',
-    sourceAddressId: 'n2', // Delivery guy's location
-    targetAddressId: 'n3', // User's address
+    sourceAddressId: 'n2',
+    targetAddressId: 'n3', 
     status: 'assigned',
-    createdAt: new Date(Date.now() - 3600000), // 1 hour ago
+    createdAt: new Date(Date.now() - 3600000),
     path: ['n2', 'n3'],
     distance: 2.1,
-    estimatedDeliveryTime: 13, // Assuming 10 km/h speed => 2.1 km at 10 km/h = ~13 minutes
   },
   {
     id: 'o2',
     userId: 'u3',
     deliveryGuyId: 'u6',
-    sourceAddressId: 'n4', // Delivery guy's location
-    targetAddressId: 'n5', // User's address
+    sourceAddressId: 'n4',  
+    targetAddressId: 'n5', 
     status: 'in-progress',
-    createdAt: new Date(Date.now() - 1800000), // 30 minutes ago
+    createdAt: new Date(Date.now() - 1800000), 
     path: ['n4', 'n5'],
     distance: 0.9,
-    estimatedDeliveryTime: 5, // 0.9 km at 10 km/h = ~5 minutes
+    estimatedDeliveryTime: 5,
   },
   {
     id: 'o3',
     userId: 'u4',
     deliveryGuyId: 'u5',
-    sourceAddressId: 'n2', // Delivery guy's location
-    targetAddressId: 'n8', // User's address
+    sourceAddressId: 'n2', 
+    targetAddressId: 'n8', 
     status: 'placed',
     createdAt: new Date(),
     path: ['n2', 'n4', 'n1', 'n8'],
     distance: 9.5,
-    estimatedDeliveryTime: 57, // 9.5 km at 10 km/h = ~57 minutes
+    estimatedDeliveryTime: 57,
   },
 ];

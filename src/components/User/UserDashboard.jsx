@@ -7,7 +7,7 @@ import { Package, MapPin } from 'lucide-react';
 
 const UserDashboard = () => {
   const { state } = useAppContext();
-  const { currentUser, orders } = state;
+  const { currentUser, orders, graph } = state;
   const [activeTab, setActiveTab] = useState('map');
   const [userOrders, setUserOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -15,9 +15,9 @@ const UserDashboard = () => {
   // Filter orders for the current user
   useEffect(() => {
     if (currentUser) {
-      const filteredOrders = orders.filter(order => order.userId === currentUser.id);
+      const filteredOrders = orders.filter((order) => order.userId === currentUser.id);
       setUserOrders(filteredOrders);
-      
+
       // Select the first order if we have any
       if (filteredOrders.length > 0 && !selectedOrder) {
         setSelectedOrder(filteredOrders[0]);
@@ -37,18 +37,16 @@ const UserDashboard = () => {
   // Count orders by status
   const orderCounts = {
     total: userOrders.length,
-    placed: userOrders.filter(o => o.status === 'placed').length,
-    inProgress: userOrders.filter(o => ['assigned', 'in-progress'].includes(o.status)).length,
-    delivered: userOrders.filter(o => o.status === 'delivered').length,
+    placed: userOrders.filter((o) => o.status === 'placed').length,
+    inProgress: userOrders.filter((o) => ['assigned', 'in-progress'].includes(o.status)).length,
+    delivered: userOrders.filter((o) => o.status === 'delivered').length,
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">My Dashboard</h1>
-        <p className="text-gray-600">
-          Track your orders and place new deliveries.
-        </p>
+        <p className="text-gray-600">Track your orders and place new deliveries.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -109,20 +107,20 @@ const UserDashboard = () => {
         <div className="flex-grow p-4 overflow-auto">
           {activeTab === 'map' && (
             <div className="h-full">
-              <MapView selectedOrder={selectedOrder} />
+              <MapView selectedOrder={selectedOrder} highlightUser={currentUser} />
             </div>
           )}
-          
+
           {activeTab === 'orders' && (
             <div className="h-full overflow-auto">
-              <OrdersTable 
-                orders={userOrders} 
+              <OrdersTable
+                orders={userOrders}
                 onSelectOrder={setSelectedOrder}
                 selectedOrderId={selectedOrder?.id}
               />
             </div>
           )}
-          
+
           {activeTab === 'placeOrder' && (
             <div className="max-w-2xl mx-auto">
               <OrderForm onOrderPlaced={() => setActiveTab('orders')} />
@@ -134,4 +132,4 @@ const UserDashboard = () => {
   );
 };
 
-export default UserDashboard; 
+export default UserDashboard;

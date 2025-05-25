@@ -12,10 +12,8 @@ const OrderForm = ({ onOrderPlaced }) => {
 
   if (!currentUser) return null;
 
-  // Get all addresses excluding the current user's address
   const availableAddresses = graph.nodes.filter(node => node.id !== currentUser.addressId);
 
-  // Get all delivery guys
   const deliveryGuys = users.filter(user => user.role === 'delivery');
 
   const handleSubmit = (e) => {
@@ -24,7 +22,6 @@ const OrderForm = ({ onOrderPlaced }) => {
     if (targetAddressId && deliveryGuyId && currentUser) {
       setIsSubmitting(true);
       
-      // Create a new order
       dispatch({
         type: 'PLACE_ORDER',
         payload: {
@@ -34,7 +31,6 @@ const OrderForm = ({ onOrderPlaced }) => {
         },
       });
       
-      // Reset form and show success message
       setTimeout(() => {
         setTargetAddressId('');
         setDeliveryGuyId('');
@@ -55,24 +51,6 @@ const OrderForm = ({ onOrderPlaced }) => {
       </div>
       
       <form onSubmit={handleSubmit}>
-        <div className="mb-6">
-          <label htmlFor="currentAddress" className="block text-sm font-medium text-gray-700 mb-2">
-            Pickup Address
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              id="currentAddress"
-              className="block w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-              value={currentUser.address}
-              disabled
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <MapPin className="w-5 h-5 text-gray-400" />
-            </div>
-          </div>
-        </div>
-
         <div className="mb-6">
           <label htmlFor="targetAddress" className="block text-sm font-medium text-gray-700 mb-2">
             Delivery Address
