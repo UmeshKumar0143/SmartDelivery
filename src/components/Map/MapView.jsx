@@ -4,23 +4,20 @@ import L from 'leaflet';
 import { useAppContext } from '../../contexts/AppContext';
 import { getRouteGeometry } from '../../utils/dijkstra';
 
-const DEFAULT_CENTER = [40.7580, -73.9855]; // Times Square, NY
+const DEFAULT_CENTER = [40.7580, -73.9855]; 
 const DEFAULT_ZOOM = 13;
 
-// Utility to update the map view
 const MapUpdater = ({ center }) => {
   const map = useMap();
-
   useEffect(() => {
     if (center) {
       map.setView(center, map.getZoom());
     }
   }, [center, map]);
-
   return null;
 };
 
-const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null }) => {
+const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null, isAdminView = false }) => {
   const { state } = useAppContext();
   const { graph, users, orders } = state;
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
@@ -43,13 +40,22 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
 
   useEffect(() => {
     const loadAllRoutes = async () => {
-      if (!highlightUser) return;
-
+      if (!highlightUser && !isAdminView) return;
       setIsLoadingRoutes(true);
       try {
-        const deliveryOrders = orders.filter(
-          (order) => order.deliveryGuyId === highlightUser.id && order.status !== 'delivered'
-        );
+        let deliveryOrders = [];
+
+        if (isAdminView) {
+          deliveryOrders = orders.filter((order) => order.status !== 'delivered' && order.status !== 'revoked');
+        } else if (highlightUser?.role === 'delivery') {
+          deliveryOrders = orders.filter(
+            (order) => order.deliveryGuyId === highlightUser.id && order.status !== 'delivered'
+          );
+        } else if (highlightUser?.role === 'user') {
+          deliveryOrders = orders.filter(
+            (order) => order.userId === highlightUser.id && order.status !== 'delivered'
+          );
+        }
 
         const routes = await Promise.all(
           deliveryOrders.map(async (order) => {
@@ -75,7 +81,13 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
 
         setAllRoutes(routes.filter((route) => route !== null));
 
-        if (!selectedOrder && highlightUser) {
+        if (!isAdminView && !selectedOrder && highlightUser?.role === 'user' && deliveryOrders.length > 0) {
+          const firstOrder = deliveryOrders[0];
+          const targetNode = graph.nodes.find((n) => n.id === firstOrder.targetAddressId);
+          if (targetNode) {
+            setMapCenter([targetNode.latitude, targetNode.longitude]);
+          }
+        } else if (!isAdminView && !selectedOrder && highlightUser?.role === 'delivery') {
           const userNode = graph.nodes.find((n) => n.id === highlightUser.addressId);
           if (userNode) {
             setMapCenter([userNode.latitude, userNode.longitude]);
@@ -87,9 +99,8 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
         setIsLoadingRoutes(false);
       }
     };
-
     loadAllRoutes();
-  }, [orders, graph, highlightUser, selectedOrder]);
+  }, [orders, graph, highlightUser, selectedOrder, isAdminView]);
 
   useEffect(() => {
     if (selectedOrder) {
@@ -101,67 +112,172 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
   }, [selectedOrder, graph.nodes]);
 
   const renderNodes = () => {
-    const deliveryNodeIds = new Set(orders.map((order) => order.targetAddressId));
+    if (isAdminView) {
+      const userNodeIds = new Set(users.map((user) => user.addressId).filter((id) => id));
+      return graph.nodes
+        .filter((node) => userNodeIds.has(node.id))
+        .map((node) => {
+          const usersAtNode = users.filter((user) => user.addressId === node.id);
+          return (
+            <Marker
+              key={node.id}
+              position={[node.latitude, node.longitude]}
+              icon={usersAtNode.length > 0 ? getUserIcon(usersAtNode[0]) : userIcon}
+            >
+              <Popup>
+                <div>
+                  <h3 className="font-semibold">{node.name}</h3>
+                  {usersAtNode.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Users at this location:</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {usersAtNode.map((user) => (
+                          <li key={user.id}>
+                            {user.name} ({user.role})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        });
+    } else if (highlightUser?.role === 'user') {
+      const userOrderNodeIds = new Set(
+        orders
+          .filter((order) => order.userId === highlightUser.id && order.status !== 'delivered')
+          .map((order) => order.targetAddressId)
+      );
+      return graph.nodes
+        .filter((node) => userOrderNodeIds.has(node.id))
+        .map((node) => {
+          const ordersAtNode = orders.filter(
+            (order) => order.targetAddressId === node.id && order.userId === highlightUser.id
+          );
+          const usersAtNode = ordersAtNode
+            .map((order) => users.find((u) => u.id === order.userId))
+            .filter((user) => user);
+          return (
+            <Marker
+              key={node.id}
+              position={[node.latitude, node.longitude]}
+              icon={userIcon}
+            >
+              <Popup>
+                <div>
+                  <h3 className="font-semibold">{node.name}</h3>
+                  {usersAtNode.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Ordered by:</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {usersAtNode.map((user) => (
+                          <li key={user.id}>{user.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        });
+    } else if (highlightUser?.role === 'delivery') {
+      const assignedOrderNodeIds = new Set(
+        orders
+          .filter((order) => order.deliveryGuyId === highlightUser.id && order.status !== 'delivered')
+          .map((order) => order.targetAddressId)
+      );
+      
+      if (highlightUser.addressId) {
+        assignedOrderNodeIds.add(highlightUser.addressId);
+      }
 
-    if (highlightUser?.role === 'delivery') {
-      deliveryNodeIds.add(highlightUser.addressId);
+      return graph.nodes
+        .filter((node) => assignedOrderNodeIds.has(node.id))
+        .map((node) => {
+          const ordersAtNode = orders.filter(
+            (order) => order.targetAddressId === node.id && order.deliveryGuyId === highlightUser.id
+          );
+          const usersAtNode = ordersAtNode
+            .map((order) => users.find((u) => u.id === order.userId))
+            .filter((user) => user);
+          
+          const isDeliveryAgentLocation = node.id === highlightUser.addressId;
+          
+          return (
+            <Marker
+              key={node.id}
+              position={[node.latitude, node.longitude]}
+              icon={isDeliveryAgentLocation ? deliveryIcon : userIcon}
+            >
+              <Popup>
+                <div>
+                  <h3 className="font-semibold">{node.name}</h3>
+                  {isDeliveryAgentLocation && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Delivery Agent:</p>
+                      <p className="text-sm">{highlightUser.name}</p>
+                    </div>
+                  )}
+                  {usersAtNode.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Delivery for:</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {usersAtNode.map((user) => (
+                          <li key={user.id}>{user.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        });
+    } else {
+      const orderNodeIds = new Set(orders.map((order) => order.targetAddressId));
+      return graph.nodes
+        .filter((node) => orderNodeIds.has(node.id))
+        .map((node) => {
+          const ordersAtNode = orders.filter((order) => order.targetAddressId === node.id);
+          const usersAtNode = ordersAtNode
+            .map((order) => users.find((u) => u.id === order.userId))
+            .filter((user) => user);
+          return (
+            <Marker
+              key={node.id}
+              position={[node.latitude, node.longitude]}
+              icon={userIcon}
+            >
+              <Popup>
+                <div>
+                  <h3 className="font-semibold">{node.name}</h3>
+                  {usersAtNode.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Ordered by:</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {usersAtNode.map((user) => (
+                          <li key={user.id}>{user.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        });
     }
-
-    return graph.nodes
-      .filter((node) => deliveryNodeIds.has(node.id))
-      .map((node) => {
-        const ordersAtNode = orders.filter((order) => order.targetAddressId === node.id);
-        const usersAtNode = ordersAtNode
-          .map((order) => users.find((u) => u.id === order.userId))
-          .filter((user) => user);
-
-        return (
-          <Marker
-            key={node.id}
-            position={[node.latitude, node.longitude]}
-            icon={
-              node.id === highlightUser?.addressId
-                ? getUserIcon(highlightUser)
-                : usersAtNode.length > 0
-                ? getUserIcon(usersAtNode[0])
-                : userIcon
-            }
-          >
-            <Popup>
-              <div>
-                <h3 className="font-semibold">{node.name}</h3>
-                {node.id === highlightUser?.addressId && highlightUser && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium">Delivery Guy:</p>
-                    <p className="text-sm">{highlightUser.name}</p>
-                  </div>
-                )}
-                {usersAtNode.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium">Ordered by:</p>
-                    <ul className="list-disc list-inside text-sm">
-                      {usersAtNode.map((user) => (
-                        <li key={user.id}>{user.name}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        );
-      });
   };
 
   const renderEdges = () => {
     if (!showEdges) return null;
-
     return graph.edges.map((edge) => {
       const sourceNode = graph.nodes.find((n) => n.id === edge.source);
       const targetNode = graph.nodes.find((n) => n.id === edge.target);
-
       if (!sourceNode || !targetNode) return null;
-
       return (
         <Polyline
           key={edge.id}
@@ -187,7 +303,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
 
   const renderPaths = () => {
     const inProgressOrder = allRoutes.find((route) => route.status === 'in-progress');
-
     if (inProgressOrder) {
       return (
         <Polyline
@@ -199,7 +314,6 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
         />
       );
     }
-
     return allRoutes.map((route) => (
       <Polyline
         key={route.orderId}
@@ -222,14 +336,11 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
           attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-
         {renderNodes()}
         {renderEdges()}
         {renderPaths()}
-
         <MapUpdater center={mapCenter} />
       </MapContainer>
-
       {isLoadingRoutes && (
         <div className="absolute top-4 right-4 bg-white p-2 rounded shadow-md z-10">
           <span className="text-sm text-gray-600">Loading routes...</span>
