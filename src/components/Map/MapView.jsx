@@ -7,6 +7,65 @@ import { getRouteGeometry } from '../../utils/dijkstra';
 const DEFAULT_CENTER = [40.7580, -73.9855]; 
 const DEFAULT_ZOOM = 13;
 
+const stringToColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return `#${"00000".substring(0, 6 - c.length)}${c}`;
+};
+
+const STATUS_COLORS = {
+  'in-progress': 'green',
+  'pending': 'blue',
+  'assigned': 'orange',
+};
+
+const calculateEstimatedTime = (geometry, averageSpeed = 30) => {
+  if (!geometry || geometry.length < 2) return null;
+  
+  let totalDistance = 0;
+  for (let i = 0; i < geometry.length - 1; i++) {
+    const [lat1, lng1] = geometry[i];
+    const [lat2, lng2] = geometry[i + 1];
+    
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    totalDistance += distance;
+  }
+  
+  const timeInHours = totalDistance / averageSpeed;
+  return Math.round(timeInHours * 60);
+};
+
+const getEstimatedTime = (order, geometry) => {
+  if (order?.estimatedTime && order.estimatedTime !== 'N/A') {
+    return typeof order.estimatedTime === 'number' ? order.estimatedTime : parseInt(order.estimatedTime);
+  }
+  
+  if (order?.estimatedDeliveryTime) {
+    return typeof order.estimatedDeliveryTime === 'number' ? order.estimatedDeliveryTime : parseInt(order.estimatedDeliveryTime);
+  }
+  
+  if (geometry && geometry.length > 1) {
+    return calculateEstimatedTime(geometry);
+  }
+  
+  if (order?.path && order.path.length > 1) {
+    return order.path.length * 5; 
+  }
+  
+  return null;
+};
+
 const MapUpdater = ({ center }) => {
   const map = useMap();
   useEffect(() => {
@@ -304,25 +363,51 @@ const MapView = ({ showEdges = false, selectedOrder = null, highlightUser = null
   const renderPaths = () => {
     const inProgressOrder = allRoutes.find((route) => route.status === 'in-progress');
     if (inProgressOrder) {
+      const order = orders.find((o) => o.id === inProgressOrder.orderId);
+      const estimatedTime = getEstimatedTime(order, inProgressOrder.geometry);
       return (
         <Polyline
           key={inProgressOrder.orderId}
           positions={inProgressOrder.geometry}
-          color="green"
+          color={STATUS_COLORS['in-progress'] || stringToColor(inProgressOrder.orderId)}
           weight={4}
           opacity={0.8}
-        />
+        >
+          <Popup>
+            <div>
+              <p className="text-sm font-medium">Order ID: {inProgressOrder.orderId}</p>
+              <p className="text-sm">Status: In Progress</p>
+              <p className="text-sm">
+                Estimated Time: {estimatedTime ? `${estimatedTime} minutes` : 'Calculating...'}
+              </p>
+            </div>
+          </Popup>
+        </Polyline>
       );
     }
-    return allRoutes.map((route) => (
-      <Polyline
-        key={route.orderId}
-        positions={route.geometry}
-        color="blue"
-        weight={4}
-        opacity={0.8}
-      />
-    ));
+    return allRoutes.map((route) => {
+      const order = orders.find((o) => o.id === route.orderId);
+      const estimatedTime = getEstimatedTime(order, route.geometry);
+      const color = STATUS_COLORS[route.status] || stringToColor(route.orderId);
+      return (
+        <Polyline
+          key={route.orderId}
+          positions={route.geometry}
+          color={color}
+          weight={4}
+          opacity={0.8}
+        >
+          <Popup>
+            <div>
+              <p className="text-sm font-medium">Order ID: {route.orderId}</p>
+              <p className="text-sm">
+                Estimated Time: {estimatedTime ? `${estimatedTime} minutes` : 'Calculating...'}
+              </p>
+            </div>
+          </Popup>
+        </Polyline>
+      );
+    });
   };
 
   return (
