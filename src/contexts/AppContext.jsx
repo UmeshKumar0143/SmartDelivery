@@ -81,46 +81,7 @@ const appReducer = (state, action) => {
       };
     }
     
-    case 'TOGGLE_OBSTACLE': {
-      const { edgeId } = action.payload;
-      
-      const updatedEdges = state.graph.edges.map((edge) => {
-        if (edge.id === edgeId) {
-          return { ...edge, isBlocked: !edge.isBlocked };
-        }
-        return edge;
-      });
-
-      const updatedGraph = {
-        ...state.graph,
-        edges: updatedEdges,
-      };
-
-      const recalculatedOrders = state.orders.map((order) => {
-        if (order.status !== 'delivered') {
-          const { path, distance, estimatedTime } = findShortestPath(
-            updatedGraph,
-            order.sourceAddressId,
-            order.targetAddressId
-          );
-          
-          return {
-            ...order,
-            path,
-            distance,
-            estimatedDeliveryTime: estimatedTime,
-          };
-        }
-        
-        return order;
-      });
-
-      return {
-        ...state,
-        graph: updatedGraph,
-        orders: recalculatedOrders,
-      };
-    }
+    
     
     case 'SELECT_NODE': {
       return {
